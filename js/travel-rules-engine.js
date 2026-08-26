@@ -148,22 +148,37 @@
     button.onclick=()=>{
       button.classList.add('planner-hide');
       const domestic=tpa.tripType==='Domestic U.S. travel';
+      const savedPhone=(member.phone||'').trim(),savedEmail=(member.email||'').trim();
       const form=document.createElement('form');form.id='reviewIntake';form.className='review-intake';
-      form.innerHTML='<div class="notice"><strong>No charge today.</strong> WholePath will review the trip details first and provide the scope and price before any paid work begins.</div><div class="review-intake-grid"><div class="field"><label>Preferred contact method</label><select id="reviewContact"><option value="Email">Email</option><option value="Phone">Phone</option></select></div><div class="field"><label>Phone number (optional)</label><input id="reviewPhone" type="tel" autocomplete="tel" placeholder="Best callback number"></div><div class="field full"><label>'+(domestic?'Starting city or area':'Departure country and city')+'</label><input id="reviewOriginDetail" required placeholder="Where the trip begins"></div><div class="field full"><label>'+(tpa.transport==='Flying'?'Arrival airport and airline, if known':'Destination city or area')+'</label><input id="reviewDestinationDetail" required placeholder="Where the pet will arrive"></div><div class="field full"><label>Questions or details the reviewer should know (optional)</label><textarea id="reviewNotes" placeholder="Connections, return date, airline, timing concerns, or anything the free planner could not confirm"></textarea></div></div><div class="review-intake-actions"><button class="btn primary" id="submitReview" type="submit">Submit trip for review</button><button class="btn" id="cancelReview" type="button">Cancel</button></div><div class="status" id="reviewFormStatus"></div>';
+      form.innerHTML='<div class="notice"><strong>No charge today.</strong> WholePath will review the trip details first and provide the scope and price before any paid work begins. Your saved account and pet records will be included automatically.</div><div class="review-intake-grid"><div class="field full"><label>Preferred contact method</label><select id="reviewContact"><option value="Email">Email</option><option value="Phone"'+(!savedPhone?' disabled':'')+'>Phone'+(!savedPhone?' — no number saved':'')+'</option></select><div class="health-note" id="reviewContactSummary"></div></div><div class="field full"><label>'+(domestic?'Starting city or area':'Departure country and city')+'</label><input id="reviewOriginDetail" required placeholder="Where the trip begins"></div><div class="field full"><label>'+(tpa.transport==='Flying'?'Arrival airport and airline, if known':'Destination city or area')+'</label><input id="reviewDestinationDetail" required placeholder="Where the pet will arrive"></div><div class="field full"><label>Questions or details the reviewer should know (optional)</label><textarea id="reviewNotes" placeholder="Connections, return date, airline, timing concerns, or anything the free planner could not confirm"></textarea></div></div><div class="review-intake-actions"><button class="btn primary" id="submitReview" type="submit">Submit trip for review</button><button class="btn" id="cancelReview" type="button">Cancel</button></div><div class="status" id="reviewFormStatus"></div>';
       box.appendChild(form);
+      const showContact=()=>{$('reviewContactSummary').textContent=$('reviewContact').value==='Phone'?'We’ll call the number saved in your profile: '+savedPhone:'We’ll email the address saved in your profile: '+savedEmail};
+      $('reviewContact').onchange=showContact;showContact();
       $('cancelReview').onclick=()=>{form.remove();button.classList.remove('planner-hide')};
       form.onsubmit=async e=>{
         e.preventDefault();
-        const submit=$('submitReview'),contact=$('reviewContact').value,phone=$('reviewPhone').value.trim();
-        if(contact==='Phone'&&!phone){$('reviewFormStatus').textContent='Please enter the phone number you want us to use.';$('reviewFormStatus').classList.add('error');return}
+        const submit=$('submitReview'),contact=$('reviewContact').value,phone=savedPhone;
         submit.disabled=true;submit.textContent='Submitting...';$('reviewFormStatus').textContent='';
         const domestic=tpa.tripType==='Domestic U.S. travel';
+        const pet=pets.find(p=>p.id===tpa.petId)||{};
+        const petVaccines=vaccines.filter(v=>v.petId===tpa.petId);
+        const petPreventatives=preventatives.filter(p=>p.petId===tpa.petId);
+        const fmt=v=>v||'Not provided';
+        const vaccineSummary=petVaccines.length?petVaccines.map(v=>v.name+' — given '+fmt(v.date)+'; expires / due '+fmt(v.due)+(v.manufacturer?'; manufacturer '+v.manufacturer:'')+(v.lotNumber?'; lot '+v.lotNumber:'')+(v.providerName?'; provider '+v.providerName:'')).join('\n'):'No vaccination or test records saved.';
+        const preventativeSummary=petPreventatives.length?petPreventatives.map(p=>p.type+' — '+fmt(p.product)+'; administered '+fmt(p.date)).join('\n'):'No preventative records saved.';
+        const memberName=((member.first||'')+' '+(member.last||'')).trim()||'WholePath member';
+        const memberProfileSummary=['Name: '+memberName,'Email: '+fmt(savedEmail),'Phone: '+fmt(phone),'City: '+fmt(member.city),'State: '+fmt(member.state),'ZIP / postal code: '+fmt(member.zip),'Membership: '+fmt(member.tier),'Wix member ID: '+fmt(member.id)].join('\n');
+        const petProfileSummary=['Pet: '+fmt(pet.name),'Species: '+fmt(pet.species),'Breed: '+fmt(pet.breed),'Date of birth: '+fmt(pet.dob),'Sex: '+fmt(pet.sex),'Spayed / neutered: '+(pet.altered===true?'Yes':pet.altered===false?'No':'Not provided'),'Weight: '+(pet.weight!==''&&pet.weight!=null?pet.weight+' lb':'Not provided'),'Microchip: '+fmt(pet.chip),'Microchip date: '+fmt(pet.microchipDate),'Pet profile ID: '+fmt(pet.id),'Notes: '+fmt(pet.notes)].join('\n');
+        const originDetail=$('reviewOriginDetail').value.trim(),destinationDetail=$('reviewDestinationDetail').value.trim(),reviewNotes=$('reviewNotes').value.trim();
+        const travelSummary=['Trip type: '+fmt(tpa.tripType),'Travel date: '+fmt(tpa.travelDate),'Origin: '+fmt(domestic?tpa.originState:tpa.origin),'Origin details: '+fmt(originDetail),'Destination: '+fmt(dest),'Destination details: '+fmt(destinationDetail),'Travel method: '+fmt(tpa.transport)].join('\n');
+        const emailSummary=['NEW WHOLEPATH TRIP REVIEW REQUEST','','TRIP DETAILS',travelSummary,'','CUSTOMER PROFILE',memberProfileSummary,'','PET PROFILE',petProfileSummary,'','VACCINATIONS & TESTS',vaccineSummary,'','PREVENTATIVES',preventativeSummary,'','CUSTOMER NOTES',fmt(reviewNotes),'','PLANNER RECORD','Rule library verified: '+fmt(rules&&rules.verifiedAt),'Submitted: '+new Date().toLocaleString()].join('\n');
         const payload={
           memberId:member.id,pet:tpa.petId,petName:tpa.petName,species:tpa.species||'',breed:tpa.breed||'',tripType:tpa.tripType,
           destination:dest,destinationState:tpa.destinationState||'',origin:domestic?(tpa.originState||'United States'):(tpa.origin||''),originState:tpa.originState||'',
           travelDate:tpa.travelDate,transport:tpa.transport||'',status:'new',memberEmail:member.email||'',phone,contactPreference:contact,
-          originDetails:$('reviewOriginDetail').value.trim(),destinationDetails:$('reviewDestinationDetail').value.trim(),
-          notes:$('reviewNotes').value.trim(),plannerSnapshot:JSON.stringify({answers:tpa,generatedAt:new Date().toISOString(),ruleLibraryVerifiedAt:rules&&rules.verifiedAt||''}),
+          originDetails:originDetail,destinationDetails:destinationDetail,notes:reviewNotes,
+          memberName,memberPhone:phone,memberZipCode:member.zip||'',memberProfileId:member.profileId||'',memberProfileSummary,petProfileSummary,vaccinationSummary:vaccineSummary,preventativeSummary,emailSummary,
+          plannerSnapshot:JSON.stringify({answers:tpa,member:{id:member.id,profileId:member.profileId,name:memberName,email:savedEmail,phone,city:member.city||'',state:member.state||'',zipCode:member.zip||'',membershipTier:member.tier},pet, vaccinations:petVaccines,preventatives:petPreventatives,generatedAt:new Date().toISOString(),ruleLibraryVerifiedAt:rules&&rules.verifiedAt||''}),
           requestSource:'free-travel-planner'
         };
         try{
