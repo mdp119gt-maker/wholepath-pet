@@ -63,6 +63,12 @@
     const out=rs.requirements.map(r=>card(r,dest,species)).filter(Boolean);
     if(dest==='Japan')out.push(tpItem('Other vaccines','Japan’s border-entry pathway centers on rabies and required health certification. Routine vaccines should still be kept current for the pet’s health, and the final clinical examination must satisfy the destination certificate.','info','Required vs. recommended'));
     if(dest==='European Union')out.push(tpItem('Other routine vaccines','Other routine vaccines are not a general EU border-entry requirement for privately owned dogs and cats, although carriers, boarding facilities, and local rules can add requirements.','info','Required vs. recommended'));
+    if(dest==='Mexico'){
+      const rc=rabiesCurrent();
+      out.push(requirement('Rabies vaccination guidance','Mexico’s current federal entry instructions for ordinary U.S.-origin pet dogs and cats do not generally list a rabies vaccination certificate as an entry requirement. However, CDC strongly recommends that dogs returning to the United States remain vaccinated, and airlines, lodging, boarding facilities, or local authorities may require proof. This card reviews the rabies record saved in the pet profile.',rc,false));
+      out.push(tpItem('Other routine vaccinations','Mexico’s federal border instructions do not generally list DHPP, Bordetella, leptospirosis, or other routine vaccines as entry requirements for an ordinary accompanied U.S.-origin dog or cat. Keep age-appropriate vaccines current for health protection and confirm any carrier or lodging requirements.','info','Recommended / carrier rules'));
+      if(species==='Dog')out.push(tpItem('Returning to the United States','Mexico is not currently on CDC’s high-risk dog-rabies list. A dog returning from Mexico still needs a CDC Dog Import Form receipt and must meet CDC entry conditions, including appearing healthy, being at least 6 months old, and having a detectable microchip. CDC strongly recommends rabies vaccination even for dogs arriving from low-risk countries.','warn','Plan for U.S. re-entry'));
+    }
     return out;
   };
   const fallbackStart=tpStart;
