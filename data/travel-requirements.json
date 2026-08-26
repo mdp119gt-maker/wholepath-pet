@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-25",
+  "notes": "WholePath Pet free-planner rule library. Legal entry requirements are separated from recommendations and carrier/local rules.",
+  "destinations": {
+    "Japan": {
+      "source": "https://www.aphis.usda.gov/pet-travel/us-to-another-country-export/pet-travel-us-japan",
+      "authority": "USDA APHIS / Japan Animal Quarantine Service",
+      "requirements": [
+        {"key":"microchip","type":"required","summary":"ISO-compatible microchip; normally implanted on or before the first qualifying rabies vaccination."},
+        {"key":"rabies","type":"required","summary":"At least two qualifying rabies vaccinations after microchipping; first at 91 days of age or older; second more than 30 days later while the first remains valid."},
+        {"key":"titer","type":"required","summary":"Rabies antibody test of at least 0.5 IU/mL from an accepted laboratory."},
+        {"key":"wait","type":"required","summary":"At least 180 days from the titer blood draw to arrival."},
+        {"key":"notice","type":"required","summary":"Advance notification to Animal Quarantine Service at least 40 days before arrival."},
+        {"key":"certificate","type":"required","summary":"Final veterinary examination, export health certificate, and USDA APHIS endorsement for U.S. departures."}
+      ]
+    },
+    "European Union": {
+      "source": "https://food.ec.europa.eu/animals/live-animal-movements/dogs-cats-and-ferrets/bringing-pet-eu-non-eu-country_en",
+      "authority": "European Commission",
+      "requirements": [
+        {"key":"microchip","type":"required","summary":"Microchip identification; the rabies vaccination used for entry cannot predate identification."},
+        {"key":"rabies","type":"required","summary":"Valid rabies vaccination; a primary vaccination generally requires at least a 21-day wait before travel."},
+        {"key":"certificate","type":"required","summary":"EU animal health certificate for non-commercial movement from the United States, with competent-authority endorsement."},
+        {"key":"echinococcus","type":"conditional","summary":"Dogs entering Finland, Ireland, Malta, Norway, or Northern Ireland require Echinococcus treatment 24–120 hours before entry."}
+      ]
+    },
+    "Canada": {
+      "source": "https://inspection.canada.ca/en/importing-food-plants-animals/pets",
+      "authority": "Canadian Food Inspection Agency",
+      "requirements": [
+        {"key":"rabies","type":"conditional","summary":"Rabies documentation depends on species, age, origin, and travel circumstances; a current rabies vaccination certificate is the common pathway for ordinary U.S.-origin dogs and cats old enough to require it."},
+        {"key":"microchip","type":"not-general","summary":"No universal federal microchip requirement for ordinary accompanied U.S.-origin pet dogs and cats."}
+      ]
+    },
+    "Mexico": {
+      "source": "https://www.aphis.usda.gov/pet-travel/us-to-another-country-export/pet-travel-us-mexico",
+      "authority": "USDA APHIS / SENASICA",
+      "requirements": [
+        {"key":"nws-dog","type":"required-dog","summary":"Effective August 3, 2026, U.S.-origin pet dogs require an NWS Inspection Certificate signed by a USDA-accredited veterinarian and issued no more than 5 days before travel."},
+        {"key":"cat-certificate","type":"not-required-cat","summary":"U.S.-origin pet cats do not currently require a health certificate for entry to Mexico."},
+        {"key":"inspection","type":"required","summary":"SENASICA arrival inspection for signs of infectious disease, ectoparasites, and fresh or healing wounds."}
+      ]
+    },
+    "South Africa": {
+      "source": "https://www.aphis.usda.gov/pet-travel/us-to-another-country-export/pet-travel-us-south-africa",
+      "authority": "USDA APHIS / Republic of South Africa",
+      "requirements": [
+        {"key":"permit","type":"required","summary":"Veterinary import permit required for dogs and cats."},
+        {"key":"surra","type":"required-dog","summary":"U.S.-origin dogs must test negative for Trypanosoma evansi using both CATT and Giemsa blood-smear tests at accepted laboratories."},
+        {"key":"microchip-labs","type":"required-dog","summary":"The dog microchip number must appear on laboratory reports."},
+        {"key":"certificate","type":"required","summary":"Veterinary health certificate must be USDA APHIS endorsed; for U.S.-origin dogs issuance and endorsement must occur within 10 days of travel."}
+      ]
+    },
+    "Hawaii": {
+      "source": "https://hdoa.hawaii.gov/ai/aqs/animal-quarantine-information-page/",
+      "authority": "Hawaii Department of Agriculture Animal Quarantine Station",
+      "requirements": [
+        {"key":"microchip","type":"required-fast-path","summary":"Microchip required to identify the pet for FAVN testing and faster-release pathways."},
+        {"key":"rabies","type":"required-fast-path","summary":"Two qualifying rabies vaccinations are required for the 5 Day Or Less / Direct Airport Release pathways."},
+        {"key":"favn","type":"required-fast-path","summary":"Passing OIE-FAVN result of at least 0.5 IU/mL."},
+        {"key":"wait","type":"required-fast-path","summary":"30-day pre-arrival wait after the laboratory receives the FAVN sample for the 5 Day Or Less pathway."}
+      ]
+    }
+  },
+  "domestic": {
+    "source": "https://www.aphis.usda.gov/pet-travel/state-to-state",
+    "authority": "Receiving U.S. State or Territory",
+    "status": "state-library-expanding",
+    "rule": "Interstate pet-entry requirements are set by the receiving State or Territory, not USDA APHIS. WholePath will maintain a state-level rule record for rabies, CVI/health certificate, testing/treatments, and source verification."
+  }
+}
