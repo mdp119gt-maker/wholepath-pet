@@ -136,13 +136,54 @@
   tpStart=async function(){await loadRules();return fallbackStart();};
   if($('tpStartBtn'))$('tpStartBtn').onclick=tpStart;
   const fallbackFinish=tpFinish;
+  function installReviewIntake(dest){
+    const button=$('requestReview'),box=button&&button.closest('.review-box');
+    if(!button||!box)return;
+    const styleId='reviewIntakeStyles';
+    if(!$(styleId)){
+      const style=document.createElement('style');style.id=styleId;
+      style.textContent='.review-intake{display:grid;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid #c9ded7}.review-intake-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.review-intake label{display:block;font-size:12px;font-weight:800;margin-bottom:5px}.review-intake input,.review-intake select,.review-intake textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit}.review-intake textarea{min-height:92px;resize:vertical}.review-intake .full{grid-column:1/-1}.review-intake-actions{display:flex;gap:9px;flex-wrap:wrap}.review-confirmation{border:1px solid #9fd2b9;background:#f4fbf7;border-radius:14px;padding:16px;line-height:1.5}.review-confirmation strong{display:block;margin-bottom:5px}@media(max-width:700px){.review-intake-grid{grid-template-columns:1fr}.review-intake .full{grid-column:auto}.review-intake-actions .btn{width:100%}}';
+      document.head.appendChild(style);
+    }
+    button.onclick=()=>{
+      button.classList.add('planner-hide');
+      const domestic=tpa.tripType==='Domestic U.S. travel';
+      const form=document.createElement('form');form.id='reviewIntake';form.className='review-intake';
+      form.innerHTML='<div class="notice"><strong>No charge today.</strong> WholePath will review the trip details first and provide the scope and price before any paid work begins.</div><div class="review-intake-grid"><div class="field"><label>Preferred contact method</label><select id="reviewContact"><option value="Email">Email</option><option value="Phone">Phone</option></select></div><div class="field"><label>Phone number (optional)</label><input id="reviewPhone" type="tel" autocomplete="tel" placeholder="Best callback number"></div><div class="field full"><label>'+(domestic?'Starting city or area':'Departure country and city')+'</label><input id="reviewOriginDetail" required placeholder="Where the trip begins"></div><div class="field full"><label>'+(tpa.transport==='Flying'?'Arrival airport and airline, if known':'Destination city or area')+'</label><input id="reviewDestinationDetail" required placeholder="Where the pet will arrive"></div><div class="field full"><label>Questions or details the reviewer should know (optional)</label><textarea id="reviewNotes" placeholder="Connections, return date, airline, timing concerns, or anything the free planner could not confirm"></textarea></div></div><div class="review-intake-actions"><button class="btn primary" id="submitReview" type="submit">Submit trip for review</button><button class="btn" id="cancelReview" type="button">Cancel</button></div><div class="status" id="reviewFormStatus"></div>';
+      box.appendChild(form);
+      $('cancelReview').onclick=()=>{form.remove();button.classList.remove('planner-hide')};
+      form.onsubmit=async e=>{
+        e.preventDefault();
+        const submit=$('submitReview'),contact=$('reviewContact').value,phone=$('reviewPhone').value.trim();
+        if(contact==='Phone'&&!phone){$('reviewFormStatus').textContent='Please enter the phone number you want us to use.';$('reviewFormStatus').classList.add('error');return}
+        submit.disabled=true;submit.textContent='Submitting...';$('reviewFormStatus').textContent='';
+        const domestic=tpa.tripType==='Domestic U.S. travel';
+        const payload={
+          memberId:member.id,pet:tpa.petId,petName:tpa.petName,species:tpa.species||'',breed:tpa.breed||'',tripType:tpa.tripType,
+          destination:dest,destinationState:tpa.destinationState||'',origin:domestic?(tpa.originState||'United States'):(tpa.origin||''),originState:tpa.originState||'',
+          travelDate:tpa.travelDate,transport:tpa.transport||'',status:'new',memberEmail:member.email||'',phone,contactPreference:contact,
+          originDetails:$('reviewOriginDetail').value.trim(),destinationDetails:$('reviewDestinationDetail').value.trim(),
+          notes:$('reviewNotes').value.trim(),plannerSnapshot:JSON.stringify({answers:tpa,generatedAt:new Date().toISOString(),ruleLibraryVerifiedAt:rules&&rules.verifiedAt||''}),
+          requestSource:'free-travel-planner'
+        };
+        try{
+          const result=await insert('TravelReviewRequests',payload),id=iid(result&&result.dataItem),reference=id?'WPR-'+id.slice(0,8).toUpperCase():'WPR-SUBMITTED';
+          box.innerHTML='<div class="eyebrow">Trip review requested</div><div class="review-confirmation"><strong>We received '+esc(tpa.petName)+'\'s request.</strong><div>Reference: <strong style="display:inline">'+esc(reference)+'</strong></div><div>WholePath will review the itinerary and saved pet records, then contact you by '+esc(contact.toLowerCase())+'. You will receive the scope and price before any paid work begins.</div></div>';
+          localStorage.setItem('wp_last_review_request',JSON.stringify({id,reference,status:'new',petName:tpa.petName,destination:dest,travelDate:tpa.travelDate,createdAt:new Date().toISOString()}));
+          toast('Trip review request submitted.');
+        }catch(error){submit.disabled=false;submit.textContent='Submit trip for review';$('reviewFormStatus').textContent='We could not submit the request. Please try again.';$('reviewFormStatus').classList.add('error')}
+      };
+    };
+  }
   tpFinish=function(){
     fallbackFinish();
     const dest=tpa.tripType==='Domestic U.S. travel'?tpa.destinationState:tpa.destination,rs=setFor(dest);
-    if(!rs)return;
-    const boxes=[...document.querySelectorAll('#tpOutput .planner-source')];
-    const sourceBox=boxes.find(b=>b.querySelector('strong')&&b.querySelector('strong').textContent.trim()==='Official source');
-    if(sourceBox)sourceBox.innerHTML='<strong>Source used for this result</strong><div class="muted" style="margin:4px 0 8px">WholePath built the guidance above from '+esc(rs.authority||'the destination authority')+' information verified on '+verifiedLabel()+'. The link is provided as supporting documentation; the key requirements and actions are summarized above.</div><a target="_blank" rel="noopener" href="'+esc(rs.source)+'">View the supporting government source ↗</a>';
+    if(rs){
+      const boxes=[...document.querySelectorAll('#tpOutput .planner-source')];
+      const sourceBox=boxes.find(b=>b.querySelector('strong')&&b.querySelector('strong').textContent.trim()==='Official source');
+      if(sourceBox)sourceBox.innerHTML='<strong>Source used for this result</strong><div class="muted" style="margin:4px 0 8px">WholePath built the guidance above from '+esc(rs.authority||'the destination authority')+' information verified on '+verifiedLabel()+'. The link is provided as supporting documentation; the key requirements and actions are summarized above.</div><a target="_blank" rel="noopener" href="'+esc(rs.source)+'">View the supporting government source ↗</a>';
+    }
+    installReviewIntake(dest);
   };
   loadRules();
 })();
