@@ -1,0 +1,57 @@
+name: Fix WholePath auth configuration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace old Wix client and production hostname
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text()
+          original = text
+
+          text = text.replace(
+              'e393f289-0774-49f3-8cf1-ec2d7fd1ad2a',
+              'd64a0d0d-fb39-48dd-b20f-db02f857489e'
+          )
+          text = text.replace(
+              'wholepath-pet.vercel.app',
+              'wholepath-pet-sigma.vercel.app'
+          )
+
+          if text != original:
+              path.write_text(text)
+              print('WholePath auth configuration updated.')
+          else:
+              print('WholePath auth configuration already current.')
+          PY
+
+      - name: Commit repair if needed
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No auth repair changes needed."
+            exit 0
+          fi
+          git config user.name "wholepath-auth-repair"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "Fix Wix auth client and production callback"
+          git push
