@@ -1,0 +1,63 @@
+name: Harden WholePath PKCE state
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  harden-pkce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Harden PKCE transaction persistence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text()
+          original = text
+
+          text = text.replace(
+              "localStorage.setItem('wp_code_verifier_v2',verifier);localStorage.setItem('wp_oauth_state_v2',state);",
+              "sessionStorage.setItem('wp_code_verifier_v2',verifier);sessionStorage.setItem('wp_oauth_state_v2',state);localStorage.setItem('wp_code_verifier_v2',verifier);localStorage.setItem('wp_oauth_state_v2',state);"
+          )
+
+          text = text.replace(
+              "expected=localStorage.getItem('wp_oauth_state_v2'),v=localStorage.getItem('wp_code_verifier_v2');",
+              "expected=sessionStorage.getItem('wp_oauth_state_v2')||localStorage.getItem('wp_oauth_state_v2'),v=sessionStorage.getItem('wp_code_verifier_v2')||localStorage.getItem('wp_code_verifier_v2');"
+          )
+
+          text = text.replace(
+              "localStorage.removeItem('wp_oauth_state_v2');localStorage.removeItem('wp_code_verifier_v2');",
+              "sessionStorage.removeItem('wp_oauth_state_v2');sessionStorage.removeItem('wp_code_verifier_v2');localStorage.removeItem('wp_oauth_state_v2');localStorage.removeItem('wp_code_verifier_v2');"
+          )
+
+          if text != original:
+              path.write_text(text)
+              print('PKCE transaction storage hardened.')
+          else:
+              print('No PKCE replacements were applied; inspect index.html patterns.')
+          PY
+
+      - name: Commit repair if needed
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No PKCE changes needed."
+            exit 0
+          fi
+          git config user.name "wholepath-auth-repair"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "Harden Wix PKCE state persistence"
+          git push
