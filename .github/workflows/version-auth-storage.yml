@@ -1,0 +1,57 @@
+name: Version WholePath auth storage
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version-auth-storage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Version auth storage keys
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text()
+          original = text
+
+          replacements = {
+              "TOK='wp_tokens'": "TOK='wp_tokens_v2'",
+              "'wp_code_verifier'": "'wp_code_verifier_v2'",
+              "'wp_oauth_state'": "'wp_oauth_state_v2'",
+          }
+
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+
+          if text != original:
+              path.write_text(text)
+              print('WholePath auth storage keys versioned.')
+          else:
+              print('WholePath auth storage keys already current.')
+          PY
+
+      - name: Commit repair if needed
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No auth storage changes needed."
+            exit 0
+          fi
+          git config user.name "wholepath-auth-repair"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "Version Wix auth browser storage"
+          git push
