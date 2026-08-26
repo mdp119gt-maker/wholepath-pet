@@ -1,0 +1,55 @@
+name: Enforce WholePath canonical origin
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  enforce-canonical-origin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add canonical-origin redirect
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text()
+          original = text
+          marker = '<title>WholePath Pet</title>'
+          canonical = "<title>WholePath Pet</title><script>(function(){var canonical='https://wholepath-pet-sigma.vercel.app';if(location.origin!==canonical){location.replace(canonical+location.pathname+location.search+location.hash);}})();</script>"
+
+          if canonical not in text:
+              if marker not in text:
+                  raise SystemExit('Could not find title marker in index.html')
+              text = text.replace(marker, canonical, 1)
+
+          if text != original:
+              path.write_text(text)
+              print('Canonical WholePath origin redirect added.')
+          else:
+              print('Canonical origin redirect already present.')
+          PY
+
+      - name: Commit repair if needed
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No canonical-origin changes needed."
+            exit 0
+          fi
+          git config user.name "wholepath-auth-repair"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "Force authentication onto canonical production domain"
+          git push
