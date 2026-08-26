@@ -1,8 +1,6 @@
 name: Harden WholePath PKCE state
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
