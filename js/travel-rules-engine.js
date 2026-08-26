@@ -9,7 +9,10 @@
       return rules;
     }catch(e){console.warn('WholePath requirements library unavailable; using embedded fallback rules.',e);return null;}
   }
-  function setFor(dest){return rules&&rules.destinations?rules.destinations[dest]:null}
+  function setFor(dest){
+    if(!rules)return null;
+    return (rules.destinations&&rules.destinations[dest])||(rules.domestic&&rules.domestic.states&&rules.domestic.states[dest])||null;
+  }
   function verifiedLabel(){
     const v=rules&&rules.verifiedAt;
     if(!v)return 'the current built-in rule set';
@@ -80,6 +83,54 @@
       }
     }
     return out;
+  };
+  const domesticStates=tpStates.filter(s=>!['Puerto Rico','Guam','U.S. Virgin Islands','Other U.S. territory'].includes(s));
+  const destinationQuestion=tpQuestions.findIndex(q=>q.k==='destinationState');
+  if(destinationQuestion>=0&&!tpQuestions.some(q=>q.k==='originState')){
+    tpQuestions.splice(destinationQuestion,0,
+      {k:'originState',q:'Which state are you traveling from?',type:'state',show:()=>tpa.tripType==='Domestic U.S. travel'},
+      {k:'transport',q:'How will your pet travel?',o:['Driving','Flying'],show:()=>tpa.tripType==='Domestic U.S. travel'}
+    );
+  }
+  function domesticRuleText(rule,key,species){
+    const value=rule[key];
+    if(value&&typeof value==='object')return value[species.toLowerCase()]||value.all||'';
+    return value||'';
+  }
+  function travelWindow(days){
+    const start=minusDays(tpa.travelDate,days);
+    return start&&tpa.travelDate?' For this trip, obtain it from <strong>'+esc(start)+'</strong> through <strong>'+esc(tpa.travelDate)+'</strong>.':'';
+  }
+  const fallbackDomestic=tpDomestic;
+  tpDomestic=function(dest){
+    const rule=setFor(dest),origin=setFor(tpa.originState),species=tpa.species||'Dog';
+    if(!rule||!rule.domestic)return fallbackDomestic(dest);
+    const d=Object.assign({},rules.domestic.defaults||{},rule.domestic),items=[];
+    const scope='This answer covers a privately owned '+species.toLowerCase()+' traveling with its owner, with no sale, adoption, rescue transfer, or change of ownership.';
+    items.push(tpItem('Who this answer covers',scope,'pass','Trip type confirmed'));
+    const cvi=domesticRuleText(d,'cvi',species);
+    if(d.cviRequired===false)items.push(tpItem('Veterinary health certificate (CVI)',cvi,'pass','Not required for this owner-accompanied trip'));
+    else if(d.cviRequired===true)items.push(tpItem('Veterinary health certificate (CVI)',cvi+travelWindow(d.cviDays||30),'warn','Required before entry'));
+    else items.push(tpItem('Veterinary health certificate (CVI)',cvi+travelWindow(d.cviDays||30),'warn','Use this conservative document plan'));
+    const rabies=domesticRuleText(d,'rabies',species),rc=rabiesCurrent();
+    if(d.rabiesRequired===false)items.push(tpItem('Rabies documentation',rabies,'info','Not a state entry document for this trip'));
+    else items.push(requirement('Rabies vaccination and proof',rabies,rc,false));
+    if(d.special)items.push(tpItem(d.specialTitle||'Additional destination rule',domesticRuleText(d,'special',species),'warn',d.specialLabel||'Complete before travel'));
+    else items.push(tpItem('Permit, testing, and quarantine','No general destination import permit, laboratory test, or quarantine is listed for an ordinary healthy owner-accompanied dog or cat under this rule set. Different rules can apply to animals for sale, adoption, rescue, breeding, exhibition, or commercial transfer.','pass','No additional general entry step'));
+    if(origin&&origin.domestic&&tpa.originState!==dest){
+      const back=Object.assign({},rules.domestic.defaults||{},origin.domestic),backCvi=domesticRuleText(back,'cvi',species),backRabies=domesticRuleText(back,'rabies',species);
+      items.push(tpItem('Returning to '+esc(tpa.originState),(back.cviRequired===false?'A CVI is not generally required for the covered owner-accompanied return trip. ':backCvi+travelWindow(back.cviDays||30)+' ')+backRabies,'info','Plan the return entry too'));
+    }
+    if(tpa.transport==='Flying')items.push(tpItem('Airline requirements are additional','The state-entry answer above does not replace airline rules. Confirm the carrier’s reservation, carrier dimensions, temperature embargoes, breed restrictions, check-in timing, and its own health-certificate window. If the airline requires a CVI even when the state does not, follow the airline’s shorter deadline.','warn','Confirm directly with the airline'));
+    else items.push(tpItem('Driving preparation','Carry the rabies certificate and any required CVI in the vehicle. Lodging, campgrounds, tribal lands, parks, municipalities, and border-inspection stations can impose separate rules even when the destination state grants an owner exemption.','info','Keep documents accessible'));
+    const tasks=[];
+    if(d.cviRequired!==false)tasks.push('Schedule a veterinary exam inside the '+(d.cviDays||30)+'-day CVI window shown above.');
+    if(d.rabiesRequired!==false)tasks.push('Confirm the rabies certificate stays valid through '+esc(tpa.travelDate)+'.');
+    if(d.special)tasks.push('Complete the destination-specific item described above.');
+    tasks.push(tpa.transport==='Flying'?'Confirm the airline’s separate document and carrier rules.':'Put paper and digital copies of the travel records in the vehicle.');
+    tasks.push('Recheck this plan if the pet, route, ownership, or travel date changes.');
+    items.push(tpItem('Your action checklist','<ol style="margin:8px 0 0;padding-left:20px"><li>'+tasks.join('</li><li>')+'</li></ol>','info','Trip-ready checklist'));
+    return items;
   };
   const fallbackStart=tpStart;
   tpStart=async function(){await loadRules();return fallbackStart();};
