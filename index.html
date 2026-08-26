@@ -103,6 +103,15 @@ async function hydrate(){
 }
 
 const AUTH_TXN='wp_auth_transaction_v3';
+const AUTH_CLEANUP='wp_auth_cleanup_v4';
+function cleanLegacyAuthStateOnce(){
+  const q=new URLSearchParams(location.search),hash=new URLSearchParams(location.hash.replace(/^#/,''));
+  if(q.get('code')||hash.get('code')||localStorage.getItem(AUTH_CLEANUP))return;
+  sessionStorage.removeItem(AUTH_TXN);localStorage.removeItem(AUTH_TXN);
+  sessionStorage.removeItem('wp_oauth_state_v2');sessionStorage.removeItem('wp_code_verifier_v2');
+  localStorage.removeItem('wp_oauth_state_v2');localStorage.removeItem('wp_code_verifier_v2');
+  localStorage.setItem(AUTH_CLEANUP,String(Date.now()));
+}
 function saveAuthTransaction(state,verifier){
   const value=JSON.stringify({state,verifier,createdAt:Date.now()});
   sessionStorage.setItem(AUTH_TXN,value);
@@ -210,6 +219,7 @@ function setupSocialLogin(){
   });
 }
 
+cleanLegacyAuthStateOnce();
 setupSocialLogin();
 (async()=>{try{const q=new URLSearchParams(location.search),hash=new URLSearchParams(location.hash.replace(/^#/,''));if(q.get('code')||hash.get('code')){await completeRedirect();return}if(await access())await hydrate()}catch(e){localStorage.removeItem(TOK);toast('Account connection failed: '+e.message)}})();
 </script>
